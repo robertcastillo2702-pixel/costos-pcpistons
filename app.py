@@ -6,6 +6,9 @@ st.set_page_config(page_title="Estructura de Costos - PC Pistons", layout="cente
 
 st.markdown('''
     <style>
+    /* Reduce el espacio enorme que Streamlit deja por defecto arriba */
+    .block-container { padding-top: 1rem !important; }
+    
     @media print {
         /* Oculta menú lateral, botones, inputs y alertas de Streamlit */
         .no-print, header, footer, .stSidebar, .stButton, .stAlert,
@@ -15,11 +18,17 @@ st.markdown('''
         /* Elimina los textos predeterminados del navegador */
         @page { margin: 0mm; }
         
-        /* Ajusta los márgenes reales del contenido */
+        /* FUERZA a cero el espacio superior oculto de Streamlit en la impresión */
+        .main .block-container, div[data-testid="stAppViewBlockContainer"] {
+            padding-top: 0 !important;
+            margin-top: 0 !important;
+        }
+        
+        /* Ajusta los márgenes reales del papel (menos espacio arriba) */
         body { 
             background-color: white !important; 
             margin: 0 !important; 
-            padding: 15mm 15mm !important; 
+            padding: 5mm 15mm 5mm 15mm !important; 
         }
         
         .document-container { 
@@ -31,17 +40,18 @@ st.markdown('''
             box-shadow: none !important; 
         }
         
-        .signatures { margin-top: 40px !important; page-break-inside: avoid; }
-        .doc-subtitle { margin-bottom: 15px !important; }
+        /* Sube las firmas para que cuadren perfecto abajo */
+        .signatures { margin-top: 25px !important; page-break-inside: avoid; }
+        .doc-subtitle { margin-bottom: 10px !important; }
         
         /* Evita cortes a la mitad de las filas en la tabla */
-        table { page-break-inside: auto; }
+        table { page-break-inside: auto; margin-top: 10px !important; }
         tr { page-break-inside: avoid; page-break-after: auto; }
     }
     
     .document-container { background-color: white; color: black; font-family: "Courier New", Courier, monospace, Arial; padding: 30px 40px; margin: 0 auto; max-width: 800px; border: 1px solid #ddd; }
     .text-center { text-align: center; }
-    .company-header { font-weight: bold; letter-spacing: 2px; border-bottom: 2px solid #000; padding-bottom: 4px; margin-bottom: 20px; text-align: center; font-size: 16px; }
+    .company-header { font-weight: bold; letter-spacing: 2px; border-bottom: 2px solid #000; padding-bottom: 4px; margin-bottom: 15px; margin-top: 0px; text-align: center; font-size: 16px; }
     .doc-title { font-weight: bold; font-size: 18px; margin-bottom: 4px; }
     .doc-subtitle { font-weight: bold; font-size: 15px; margin-bottom: 25px; }
     .row-flex { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 14px; }
@@ -53,7 +63,7 @@ st.markdown('''
     
     .subtotal-row { font-weight: bold; border-top: 1px solid #000; border-bottom: 1px solid #000 !important; }
     .section-title { font-weight: bold; padding-top: 15px !important; border-bottom: none !important; }
-    .signatures { display: flex; justify-content: space-between; margin-top: 60px; padding: 0 40px; }
+    .signatures { display: flex; justify-content: space-between; margin-top: 50px; padding: 0 40px; }
     .signature-line { width: 40%; text-align: center; border-top: 1px solid #000; padding-top: 6px; font-size: 14px; }
     </style>
 ''', unsafe_allow_html=True)
@@ -136,7 +146,6 @@ if btn_buscar and codigo_busqueda:
             tmpl_id = prod_data.get('product_tmpl_id', [0])[0]
             target_description = prod_data.get('name', '').upper()
 
-            # IDENTIFICADOR DE MEDIDAS
             medida_mm, medida_in = None, None
             if "0.25" in codigo_busqueda:
                 medida_mm, medida_in = "0.25", "010"
@@ -165,13 +174,10 @@ if btn_buscar and codigo_busqueda:
                     comp_name = line['product_id'][1].upper()
                     qty = line['product_qty']
                     
-                    # FILTRO INTELIGENTE CORREGIDO
                     if medida_mm:
                         tiene_medida_mm = any(m in comp_name for m in todas_medidas_mm)
                         tiene_medida_in = any(m in comp_name for m in todas_medidas_in)
                         
-                        # Si el componente es de OTRA medida distinta a la que buscamos, lo ignoramos.
-                        # Si no tiene ninguna medida escrita (ej. Casting, MOD), pasa intacto.
                         if tiene_medida_mm and medida_mm not in comp_name:
                             continue
                         if tiene_medida_in and medida_in not in comp_name:
