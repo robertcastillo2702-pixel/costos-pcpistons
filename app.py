@@ -137,7 +137,6 @@ if btn_buscar and codigo_busqueda:
                     costo_linea = qty * costo_unitario
                     item_data = {'name': comp_name, 'total': costo_linea}
 
-                    # REGLA ACTUALIZADA PARA MECANIZADO Y CASTING
                     if "MOD-" in comp_name or "MANO DE OBRA DIR" in comp_name or "MECANIZADO" in comp_name or "CASTING" in comp_name:
                         mod_list.append(item_data)
                     elif "MOI-" in comp_name or "MANO DE OBRA IND" in comp_name:
@@ -245,8 +244,8 @@ if btn_buscar and codigo_busqueda:
 <tr><td colspan="2">&nbsp;</td></tr>
 <tr class="subtotal-row"><td class="col-label">{etiqueta_precio}</td><td class="col-total" style="text-decoration: underline;">{fmt(precio_venta_usd)}</td></tr>
 <tr><td colspan="2">&nbsp;</td></tr>
-<tr><td class="col-label"><strong>Margen (USD):</strong></td><td class="col-total" style="font-weight: normal;">{fmt(margen_usd)}</td></tr>
-<tr><td class="col-label"><strong>Margen (%):</strong></td><td class="col-total" style="font-weight: normal;">{fmt(margen_pct)}%</td></tr>
+<tr><td class="col-label"><strong>Margen (USD):</strong></td><td class="col-total">{fmt(margen_usd)}</td></tr>
+<tr><td class="col-label"><strong>Margen (%):</strong></td><td class="col-total">{fmt(margen_pct)}%</td></tr>
 </table>
 <div class="signatures">
 <div class="signature-line">Elaborado por;</div>
