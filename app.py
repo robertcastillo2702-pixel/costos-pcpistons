@@ -19,7 +19,7 @@ st.markdown('''
     .text-center { text-align: center; }
     .company-header { font-weight: bold; letter-spacing: 2px; border-bottom: 2px solid #000; padding-bottom: 4px; margin-bottom: 20px; text-align: center; font-size: 16px; }
     .doc-title { font-weight: bold; font-size: 18px; margin-bottom: 4px; }
-    .doc-subtitle { font-size: 15px; margin-bottom: 25px; }
+    .doc-subtitle { font-weight: bold; font-size: 15px; margin-bottom: 25px; } /* NEGRITA APLICADA AL SUBTITULO */
     .row-flex { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 14px; }
     
     .table-cost { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 13px; table-layout: fixed; }
@@ -48,7 +48,6 @@ def fetch_pricelists(url, db, username, api_key):
 
 st.sidebar.header("⚙️ Conexión Odoo")
 url = st.sidebar.text_input("URL Odoo", value="https://pcpistons.odoo.com")
-# AQUÍ ESTÁ EL CAMBIO: Se agregó type="password" para ocultar el nombre de la base de datos
 db = st.sidebar.text_input("Base de Datos", value="antrafs-manufacturas-main-18053459", type="password")
 username = st.sidebar.text_input("Usuario / Correo", value="echacin@pcpistons.com")
 api_key = st.sidebar.text_input("API Key / Clave", type="password")
@@ -99,7 +98,6 @@ if btn_buscar and codigo_busqueda:
         uid = common.authenticate(db, username, api_key, {})
         models = xmlrpc.client.ServerProxy(f'{url}/xmlrpc/2/object')
 
-        # 1. BUSQUEDA DE LA VARIANTE
         prod_ids = models.execute_kw(db, uid, api_key, 'product.product', 'search', [[['default_code', 'ilike', codigo_busqueda]]])
         
         if not prod_ids:
@@ -109,21 +107,12 @@ if btn_buscar and codigo_busqueda:
                                           {'fields': ['name', 'default_code', 'uom_id', 'product_tmpl_id']})[0]
             
             codigo_mostrar = prod_data.get('default_code', '')
-            uom_name = prod_data.get('uom_id', [0, '4'])[1]
-            pzas_caja = ''.join(filter(str.isdigit, uom_name)) or '4'
+            
+            # EXTRACCION EXACTA DEL NOMBRE DE LA UNIDAD DE MEDIDA
+            uom_name = prod_data.get('uom_id', [0, 'Caja'])[1]
             
             tmpl_id = prod_data.get('product_tmpl_id', [0])[0]
             target_description = prod_data.get('name', '').upper()
-
-            medida_mm, medida_in = "STD", "STD"
-            if "0.25" in codigo_busqueda:
-                medida_mm, medida_in = "0.25", "010"
-            elif "0.50" in codigo_busqueda:
-                medida_mm, medida_in = "0.50", "020"
-            elif "0.75" in codigo_busqueda:
-                medida_mm, medida_in = "0.75", "030"
-            elif "1.00" in codigo_busqueda:
-                medida_mm, medida_in = "1.00", "040"
 
             comp_list, mod_list, moi_list, caf_list = [], [], [], []
 
@@ -138,10 +127,8 @@ if btn_buscar and codigo_busqueda:
                     comp_name = line['product_id'][1].upper()
                     qty = line['product_qty']
                     
-                    if "MECANIZADO" in comp_name and medida_mm not in comp_name: continue
-                    if "ANILLO" in comp_name and medida_in not in comp_name: continue
-                    if "CAMISA" in comp_name and medida_mm not in comp_name: continue
-
+                    # FILTROS ELIMINADOS: AHORA PASAN TODOS LOS COMPONENTES SIN IMPORTAR MEDIDA
+                    
                     comp_id = line['product_id'][0]
                     comp_data = models.execute_kw(db, uid, api_key, 'product.product', 'read', [comp_id], {'fields': [CAMPO_COSTO, 'standard_price']})[0]
                     
@@ -182,16 +169,13 @@ if btn_buscar and codigo_busqueda:
             precio_venta_usd = 0.0
             precio_bs = 0.0
             
-            # PRIORIDAD 1: PRECIO MANUAL
             if usar_precio_manual:
                 precio_bs = precio_manual_bs
                 
-            # PRIORIDAD 2: EXTRACCION EXACTA DESDE LA LISTA DE PRECIOS
             elif lista_seleccionada != "Ninguna" and tmpl_id:
                 plist_id = opciones_listas[lista_seleccionada]
                 
                 try:
-                    # Intento 1: Busqueda especifica
                     domain_tmpl = [['pricelist_id', '=', plist_id], ['product_tmpl_id', '=', tmpl_id]]
                     reglas_tmpl = models.execute_kw(db, uid, api_key, 'product.pricelist.item', 'search_read', [domain_tmpl], {'fields': ['fixed_price', 'price']})
                     
@@ -199,7 +183,6 @@ if btn_buscar and codigo_busqueda:
                         precio_bs = float(reglas_tmpl[0].get('fixed_price', 0.0))
                         if precio_bs == 0.0: precio_bs = float(reglas_tmpl[0].get('price', 0.0))
                     
-                    # Intento 2: Busqueda especifica por Variante
                     if precio_bs == 0.0:
                         domain_prod = [['pricelist_id', '=', plist_id], ['product_id', '=', prod_ids[0]]]
                         reglas_prod = models.execute_kw(db, uid, api_key, 'product.pricelist.item', 'search_read', [domain_prod], {'fields': ['fixed_price', 'price']})
@@ -207,7 +190,6 @@ if btn_buscar and codigo_busqueda:
                             precio_bs = float(reglas_prod[0].get('fixed_price', 0.0))
                             if precio_bs == 0.0: precio_bs = float(reglas_prod[0].get('price', 0.0))
 
-                    # Intento 3: Descarga completa anulando el limite de 100 de Odoo
                     if precio_bs == 0.0:
                         todas = models.execute_kw(db, uid, api_key, 'product.pricelist.item', 'search_read', 
                                                   [[['pricelist_id', '=', plist_id]]], 
@@ -227,7 +209,6 @@ if btn_buscar and codigo_busqueda:
                 except Exception as e:
                     st.error(f"Error extrayendo de lista de precios: {e}")
 
-            # Calculo Final USD
             if tasa_cambio > 0 and precio_bs > 0:
                 precio_venta_usd = precio_bs / tasa_cambio
 
@@ -246,7 +227,8 @@ if btn_buscar and codigo_busqueda:
 <div class="text-center doc-subtitle">y<br>Determinación de Precio de Venta<br>(USD)</div>
 <div class="row-flex">
 <div><strong>Código:</strong> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; {codigo_mostrar}</div>
-<div><strong>Pzas/Caja:</strong> &nbsp;&nbsp;&nbsp;&nbsp; {pzas_caja}</div>
+<!-- ETIQUETA Y VARIABLE ACTUALIZADAS AQUI -->
+<div><strong>Unidad/Medida:</strong> &nbsp;&nbsp;&nbsp;&nbsp; {uom_name}</div>
 </div>
 <div class="row-flex" style="margin-bottom: 20px;">
 <div><strong>Aplicación:</strong> &nbsp;&nbsp;&nbsp;&nbsp; {target_description}</div>
