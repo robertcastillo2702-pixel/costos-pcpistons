@@ -48,7 +48,8 @@ def fetch_pricelists(url, db, username, api_key):
 
 st.sidebar.header("⚙️ Conexión Odoo")
 url = st.sidebar.text_input("URL Odoo", value="https://pcpistons.odoo.com")
-db = st.sidebar.text_input("Base de Datos", value="antrafs-manufacturas-main-18053459")
+# AQUÍ ESTÁ EL CAMBIO: Se agregó type="password" para ocultar el nombre de la base de datos
+db = st.sidebar.text_input("Base de Datos", value="antrafs-manufacturas-main-18053459", type="password")
 username = st.sidebar.text_input("Usuario / Correo", value="echacin@pcpistons.com")
 api_key = st.sidebar.text_input("API Key / Clave", type="password")
 
