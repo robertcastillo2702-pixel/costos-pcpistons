@@ -7,15 +7,38 @@ st.set_page_config(page_title="Estructura de Costos - PC Pistons", layout="cente
 st.markdown('''
     <style>
     @media print {
+        /* Oculta menú lateral, botones y el iframe del botón de impresión */
         .no-print, header, footer, .stSidebar, .stButton, 
         [data-testid="stSidebar"], [data-testid="stHeader"], 
         [data-testid="stTextInput"], iframe { display: none !important; }
-        body { background-color: white !important; }
-        @page { margin: 10mm; }
-        .document-container { border: none !important; padding: 0 !important; width: 100% !important; max-width: 100% !important; }
-        .signatures { margin-top: 40px !important; }
+        
+        /* Elimina los textos predeterminados del navegador (URL, Fecha, Pagina 1/2) */
+        @page { margin: 0mm; }
+        
+        /* Ajusta los márgenes reales del contenido para que no toque los bordes del papel */
+        body { 
+            background-color: white !important; 
+            margin: 0 !important; 
+            padding: 15mm 15mm !important; 
+        }
+        
+        .document-container { 
+            border: none !important; 
+            padding: 0 !important; 
+            margin: 0 !important; 
+            width: 100% !important; 
+            max-width: 100% !important; 
+            box-shadow: none !important; 
+        }
+        
+        .signatures { margin-top: 40px !important; page-break-inside: avoid; }
         .doc-subtitle { margin-bottom: 15px !important; }
+        
+        /* Evita cortes a la mitad de las filas en la tabla */
+        table { page-break-inside: auto; }
+        tr { page-break-inside: avoid; page-break-after: auto; }
     }
+    
     .document-container { background-color: white; color: black; font-family: "Courier New", Courier, monospace, Arial; padding: 30px 40px; margin: 0 auto; max-width: 800px; border: 1px solid #ddd; }
     .text-center { text-align: center; }
     .company-header { font-weight: bold; letter-spacing: 2px; border-bottom: 2px solid #000; padding-bottom: 4px; margin-bottom: 20px; text-align: center; font-size: 16px; }
@@ -113,6 +136,19 @@ if btn_buscar and codigo_busqueda:
             tmpl_id = prod_data.get('product_tmpl_id', [0])[0]
             target_description = prod_data.get('name', '').upper()
 
+            # LÓGICA DE MEDIDAS INTELIGENTE
+            medida_mm, medida_in = None, None
+            if "0.25" in codigo_busqueda:
+                medida_mm, medida_in = "0.25", "010"
+            elif "0.50" in codigo_busqueda:
+                medida_mm, medida_in = "0.50", "020"
+            elif "0.75" in codigo_busqueda:
+                medida_mm, medida_in = "0.75", "030"
+            elif "1.00" in codigo_busqueda:
+                medida_mm, medida_in = "1.00", "040"
+            elif "STD" in codigo_busqueda:
+                medida_mm, medida_in = "STD", "STD"
+
             comp_list, mod_list, moi_list, caf_list = [], [], [], []
 
             bom_ids = models.execute_kw(db, uid, api_key, 'mrp.bom', 'search', [[['product_tmpl_id', '=', tmpl_id]]])
@@ -125,6 +161,13 @@ if btn_buscar and codigo_busqueda:
                 for line in bom_lines:
                     comp_name = line['product_id'][1].upper()
                     qty = line['product_qty']
+                    
+                    # FILTRO: Solo se activa si el usuario buscó una medida específica
+                    if medida_mm:
+                        if "MECANIZADO" in comp_name and medida_mm not in comp_name: continue
+                        if "ANILLO" in comp_name and medida_in not in comp_name: continue
+                        if "CAMISA" in comp_name and medida_mm not in comp_name: continue
+                        if "CASTING" in comp_name and medida_mm not in comp_name: continue
                     
                     comp_id = line['product_id'][0]
                     comp_data = models.execute_kw(db, uid, api_key, 'product.product', 'read', [comp_id], {'fields': [CAMPO_COSTO, 'standard_price']})[0]
@@ -254,8 +297,8 @@ if btn_buscar and codigo_busqueda:
 <tr><td colspan="2">&nbsp;</td></tr>
 <tr class="subtotal-row"><td class="col-label">{etiqueta_precio}</td><td class="col-total" style="text-decoration: underline;">{fmt(precio_venta_usd)}</td></tr>
 <tr><td colspan="2">&nbsp;</td></tr>
-<tr><td class="col-label"><strong>Margen (USD):</strong></td><td class="col-total">{fmt(margen_usd)}</td></tr>
-<tr><td class="col-label"><strong>Margen (%):</strong></td><td class="col-total">{fmt(margen_pct)}%</td></tr>
+<tr><td class="col-label"><strong>Margen (USD):</strong></td><td class="col-total"><strong>{fmt(margen_usd)}</strong></td></tr>
+<tr><td class="col-label"><strong>Margen (%):</strong></td><td class="col-total"><strong>{fmt(margen_pct)}%</strong></td></tr>
 </table>
 <div class="signatures">
 <div class="signature-line">Elaborado por;</div>
