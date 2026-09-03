@@ -84,7 +84,6 @@ def fmt(n, decimals=2):
 
 def format_row(name, total):
     total_str = fmt(total, decimals=4)
-    # Se agrega padding-right: 40px para desplazar el numero 5 espacios a la izquierda
     return f"<tr><td class='col-label'>&nbsp;&nbsp;{name}</td><td class='col-total' style='font-weight: normal; padding-right: 40px;'>{total_str}</td></tr>"
 
 def sort_key(item):
@@ -138,7 +137,8 @@ if btn_buscar and codigo_busqueda:
                     costo_linea = qty * costo_unitario
                     item_data = {'name': comp_name, 'total': costo_linea}
 
-                    if "MOD-" in comp_name or "MANO DE OBRA DIR" in comp_name:
+                    # REGLA ACTUALIZADA PARA MECANIZADO Y CASTING
+                    if "MOD-" in comp_name or "MANO DE OBRA DIR" in comp_name or "MECANIZADO" in comp_name or "CASTING" in comp_name:
                         mod_list.append(item_data)
                     elif "MOI-" in comp_name or "MANO DE OBRA IND" in comp_name:
                         moi_list.append(item_data)
@@ -245,7 +245,6 @@ if btn_buscar and codigo_busqueda:
 <tr><td colspan="2">&nbsp;</td></tr>
 <tr class="subtotal-row"><td class="col-label">{etiqueta_precio}</td><td class="col-total" style="text-decoration: underline;">{fmt(precio_venta_usd)}</td></tr>
 <tr><td colspan="2">&nbsp;</td></tr>
-<!-- SE ELIMINÓ LA FILA DE PRECIO BS -->
 <tr><td class="col-label"><strong>Margen (USD):</strong></td><td class="col-total" style="font-weight: normal;">{fmt(margen_usd)}</td></tr>
 <tr><td class="col-label"><strong>Margen (%):</strong></td><td class="col-total" style="font-weight: normal;">{fmt(margen_pct)}%</td></tr>
 </table>
