@@ -1,5 +1,6 @@
 import xmlrpc.client
 import streamlit as st
+import streamlit.components.v1 as components
 
 st.set_page_config(page_title="Estructura de Costos - PC Pistons", layout="centered")
 
@@ -8,7 +9,7 @@ st.markdown('''
     @media print {
         .no-print, header, footer, .stSidebar, .stButton, 
         [data-testid="stSidebar"], [data-testid="stHeader"], 
-        [data-testid="stTextInput"] { display: none !important; }
+        [data-testid="stTextInput"], iframe { display: none !important; }
         body { background-color: white !important; }
         @page { margin: 10mm; }
         .document-container { border: none !important; padding: 0 !important; width: 100% !important; max-width: 100% !important; }
@@ -216,7 +217,16 @@ if btn_buscar and codigo_busqueda:
             if precio_bs == 0.0 and not usar_precio_manual:
                 st.warning("⚠️ Este producto no tiene precio asignado en la lista seleccionada. Puedes usar la opción 'Ingresar precio manualmente' en el menú izquierdo.")
 
-            st.markdown('<div class="no-print" style="text-align: center; margin: 20px 0; padding: 12px; background-color: #e7f3fe; border-left: 6px solid #2196F3; border-radius: 4px; color: #0d47a1;"><span>💡 <strong>¡Formato Listo!</strong> Presiona <b>Ctrl + P</b> para imprimir en una sola hoja.</span></div>', unsafe_allow_html=True)
+            components.html(
+                """
+                <div style="text-align: center; font-family: sans-serif; margin-top: 10px;">
+                    <button onclick="window.parent.print()" style="background-color: #2196F3; color: white; border: none; padding: 12px 24px; font-size: 16px; font-weight: bold; border-radius: 6px; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.1); transition: 0.3s;">
+                        🖨️ IMPRIMIR REPORTE
+                    </button>
+                </div>
+                """,
+                height=70
+            )
 
             html_doc = f'''
 <div class="document-container">
