@@ -19,7 +19,7 @@ st.markdown('''
     .text-center { text-align: center; }
     .company-header { font-weight: bold; letter-spacing: 2px; border-bottom: 2px solid #000; padding-bottom: 4px; margin-bottom: 20px; text-align: center; font-size: 16px; }
     .doc-title { font-weight: bold; font-size: 18px; margin-bottom: 4px; }
-    .doc-subtitle { font-weight: bold; font-size: 15px; margin-bottom: 25px; } /* NEGRITA APLICADA AL SUBTITULO */
+    .doc-subtitle { font-weight: bold; font-size: 15px; margin-bottom: 25px; }
     .row-flex { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 14px; }
     
     .table-cost { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 13px; table-layout: fixed; }
@@ -84,7 +84,8 @@ def fmt(n, decimals=2):
 
 def format_row(name, total):
     total_str = fmt(total, decimals=4)
-    return f"<tr><td class='col-label'>&nbsp;&nbsp;{name}</td><td class='col-total' style='font-weight: normal;'>{total_str}</td></tr>"
+    # Se agrega padding-right: 40px para desplazar el numero 5 espacios a la izquierda
+    return f"<tr><td class='col-label'>&nbsp;&nbsp;{name}</td><td class='col-total' style='font-weight: normal; padding-right: 40px;'>{total_str}</td></tr>"
 
 def sort_key(item):
     name = item['name'].strip()
@@ -107,8 +108,6 @@ if btn_buscar and codigo_busqueda:
                                           {'fields': ['name', 'default_code', 'uom_id', 'product_tmpl_id']})[0]
             
             codigo_mostrar = prod_data.get('default_code', '')
-            
-            # EXTRACCION EXACTA DEL NOMBRE DE LA UNIDAD DE MEDIDA
             uom_name = prod_data.get('uom_id', [0, 'Caja'])[1]
             
             tmpl_id = prod_data.get('product_tmpl_id', [0])[0]
@@ -126,8 +125,6 @@ if btn_buscar and codigo_busqueda:
                 for line in bom_lines:
                     comp_name = line['product_id'][1].upper()
                     qty = line['product_qty']
-                    
-                    # FILTROS ELIMINADOS: AHORA PASAN TODOS LOS COMPONENTES SIN IMPORTAR MEDIDA
                     
                     comp_id = line['product_id'][0]
                     comp_data = models.execute_kw(db, uid, api_key, 'product.product', 'read', [comp_id], {'fields': [CAMPO_COSTO, 'standard_price']})[0]
@@ -171,43 +168,45 @@ if btn_buscar and codigo_busqueda:
             
             if usar_precio_manual:
                 precio_bs = precio_manual_bs
-                
-            elif lista_seleccionada != "Ninguna" and tmpl_id:
-                plist_id = opciones_listas[lista_seleccionada]
-                
-                try:
-                    domain_tmpl = [['pricelist_id', '=', plist_id], ['product_tmpl_id', '=', tmpl_id]]
-                    reglas_tmpl = models.execute_kw(db, uid, api_key, 'product.pricelist.item', 'search_read', [domain_tmpl], {'fields': ['fixed_price', 'price']})
+                etiqueta_precio = "Precio de Venta <u>(SUGERIDO):</u>"
+            else:
+                etiqueta_precio = "Precio de Venta:"
+                if lista_seleccionada != "Ninguna" and tmpl_id:
+                    plist_id = opciones_listas[lista_seleccionada]
                     
-                    if reglas_tmpl:
-                        precio_bs = float(reglas_tmpl[0].get('fixed_price', 0.0))
-                        if precio_bs == 0.0: precio_bs = float(reglas_tmpl[0].get('price', 0.0))
-                    
-                    if precio_bs == 0.0:
-                        domain_prod = [['pricelist_id', '=', plist_id], ['product_id', '=', prod_ids[0]]]
-                        reglas_prod = models.execute_kw(db, uid, api_key, 'product.pricelist.item', 'search_read', [domain_prod], {'fields': ['fixed_price', 'price']})
-                        if reglas_prod:
-                            precio_bs = float(reglas_prod[0].get('fixed_price', 0.0))
-                            if precio_bs == 0.0: precio_bs = float(reglas_prod[0].get('price', 0.0))
-
-                    if precio_bs == 0.0:
-                        todas = models.execute_kw(db, uid, api_key, 'product.pricelist.item', 'search_read', 
-                                                  [[['pricelist_id', '=', plist_id]]], 
-                                                  {'fields': ['product_tmpl_id', 'product_id', 'fixed_price', 'price'], 'limit': 100000})
+                    try:
+                        domain_tmpl = [['pricelist_id', '=', plist_id], ['product_tmpl_id', '=', tmpl_id]]
+                        reglas_tmpl = models.execute_kw(db, uid, api_key, 'product.pricelist.item', 'search_read', [domain_tmpl], {'fields': ['fixed_price', 'price']})
                         
-                        for r in todas:
-                            r_tmpl = r.get('product_tmpl_id')
-                            r_tmpl_id = r_tmpl[0] if isinstance(r_tmpl, list) else (r_tmpl or 0)
+                        if reglas_tmpl:
+                            precio_bs = float(reglas_tmpl[0].get('fixed_price', 0.0))
+                            if precio_bs == 0.0: precio_bs = float(reglas_tmpl[0].get('price', 0.0))
+                        
+                        if precio_bs == 0.0:
+                            domain_prod = [['pricelist_id', '=', plist_id], ['product_id', '=', prod_ids[0]]]
+                            reglas_prod = models.execute_kw(db, uid, api_key, 'product.pricelist.item', 'search_read', [domain_prod], {'fields': ['fixed_price', 'price']})
+                            if reglas_prod:
+                                precio_bs = float(reglas_prod[0].get('fixed_price', 0.0))
+                                if precio_bs == 0.0: precio_bs = float(reglas_prod[0].get('price', 0.0))
+
+                        if precio_bs == 0.0:
+                            todas = models.execute_kw(db, uid, api_key, 'product.pricelist.item', 'search_read', 
+                                                      [[['pricelist_id', '=', plist_id]]], 
+                                                      {'fields': ['product_tmpl_id', 'product_id', 'fixed_price', 'price'], 'limit': 100000})
                             
-                            r_prod = r.get('product_id')
-                            r_prod_id = r_prod[0] if isinstance(r_prod, list) else (r_prod or 0)
-                            
-                            if r_tmpl_id == tmpl_id or r_prod_id == prod_ids[0]:
-                                precio_bs = float(r.get('fixed_price', 0.0))
-                                if precio_bs == 0.0: precio_bs = float(r.get('price', 0.0))
-                                if precio_bs > 0: break
-                except Exception as e:
-                    st.error(f"Error extrayendo de lista de precios: {e}")
+                            for r in todas:
+                                r_tmpl = r.get('product_tmpl_id')
+                                r_tmpl_id = r_tmpl[0] if isinstance(r_tmpl, list) else (r_tmpl or 0)
+                                
+                                r_prod = r.get('product_id')
+                                r_prod_id = r_prod[0] if isinstance(r_prod, list) else (r_prod or 0)
+                                
+                                if r_tmpl_id == tmpl_id or r_prod_id == prod_ids[0]:
+                                    precio_bs = float(r.get('fixed_price', 0.0))
+                                    if precio_bs == 0.0: precio_bs = float(r.get('price', 0.0))
+                                    if precio_bs > 0: break
+                    except Exception as e:
+                        st.error(f"Error extrayendo de lista de precios: {e}")
 
             if tasa_cambio > 0 and precio_bs > 0:
                 precio_venta_usd = precio_bs / tasa_cambio
@@ -227,7 +226,6 @@ if btn_buscar and codigo_busqueda:
 <div class="text-center doc-subtitle">y<br>Determinación de Precio de Venta<br>(USD)</div>
 <div class="row-flex">
 <div><strong>Código:</strong> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; {codigo_mostrar}</div>
-<!-- ETIQUETA Y VARIABLE ACTUALIZADAS AQUI -->
 <div><strong>Unidad/Medida:</strong> &nbsp;&nbsp;&nbsp;&nbsp; {uom_name}</div>
 </div>
 <div class="row-flex" style="margin-bottom: 20px;">
@@ -245,9 +243,9 @@ if btn_buscar and codigo_busqueda:
 <tr><td colspan="2">&nbsp;</td></tr>
 <tr class="subtotal-row"><td class="col-label">Total Costo:</td><td class="col-total">{fmt(total_costo)}</td></tr>
 <tr><td colspan="2">&nbsp;</td></tr>
-<tr class="subtotal-row"><td class="col-label">Precio de Venta <u>(SUGERIDO):</u></td><td class="col-total" style="text-decoration: underline;">{fmt(precio_venta_usd)}</td></tr>
+<tr class="subtotal-row"><td class="col-label">{etiqueta_precio}</td><td class="col-total" style="text-decoration: underline;">{fmt(precio_venta_usd)}</td></tr>
 <tr><td colspan="2">&nbsp;</td></tr>
-<tr class="subtotal-row"><td class="col-label">Precio Bs (Referencia):</td><td class="col-total">{fmt(precio_bs)} Bs</td></tr>
+<!-- SE ELIMINÓ LA FILA DE PRECIO BS -->
 <tr><td class="col-label"><strong>Margen (USD):</strong></td><td class="col-total" style="font-weight: normal;">{fmt(margen_usd)}</td></tr>
 <tr><td class="col-label"><strong>Margen (%):</strong></td><td class="col-total" style="font-weight: normal;">{fmt(margen_pct)}%</td></tr>
 </table>
