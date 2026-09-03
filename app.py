@@ -7,15 +7,15 @@ st.set_page_config(page_title="Estructura de Costos - PC Pistons", layout="cente
 st.markdown('''
     <style>
     @media print {
-        /* Oculta menú lateral, botones y el iframe del botón de impresión */
-        .no-print, header, footer, .stSidebar, .stButton, 
+        /* Oculta menú lateral, botones, inputs y alertas de Streamlit */
+        .no-print, header, footer, .stSidebar, .stButton, .stAlert,
         [data-testid="stSidebar"], [data-testid="stHeader"], 
-        [data-testid="stTextInput"], iframe { display: none !important; }
+        [data-testid="stTextInput"], [data-testid="stAlert"], iframe { display: none !important; }
         
-        /* Elimina los textos predeterminados del navegador (URL, Fecha, Pagina 1/2) */
+        /* Elimina los textos predeterminados del navegador */
         @page { margin: 0mm; }
         
-        /* Ajusta los márgenes reales del contenido para que no toque los bordes del papel */
+        /* Ajusta los márgenes reales del contenido */
         body { 
             background-color: white !important; 
             margin: 0 !important; 
@@ -136,7 +136,7 @@ if btn_buscar and codigo_busqueda:
             tmpl_id = prod_data.get('product_tmpl_id', [0])[0]
             target_description = prod_data.get('name', '').upper()
 
-            # LÓGICA DE MEDIDAS INTELIGENTE
+            # IDENTIFICADOR DE MEDIDAS
             medida_mm, medida_in = None, None
             if "0.25" in codigo_busqueda:
                 medida_mm, medida_in = "0.25", "010"
@@ -148,6 +148,9 @@ if btn_buscar and codigo_busqueda:
                 medida_mm, medida_in = "1.00", "040"
             elif "STD" in codigo_busqueda:
                 medida_mm, medida_in = "STD", "STD"
+
+            todas_medidas_mm = ["0.25", "0.50", "0.75", "1.00", "STD"]
+            todas_medidas_in = ["010", "020", "030", "040", "STD"]
 
             comp_list, mod_list, moi_list, caf_list = [], [], [], []
 
@@ -162,12 +165,17 @@ if btn_buscar and codigo_busqueda:
                     comp_name = line['product_id'][1].upper()
                     qty = line['product_qty']
                     
-                    # FILTRO: Solo se activa si el usuario buscó una medida específica
+                    # FILTRO INTELIGENTE CORREGIDO
                     if medida_mm:
-                        if "MECANIZADO" in comp_name and medida_mm not in comp_name: continue
-                        if "ANILLO" in comp_name and medida_in not in comp_name: continue
-                        if "CAMISA" in comp_name and medida_mm not in comp_name: continue
-                        if "CASTING" in comp_name and medida_mm not in comp_name: continue
+                        tiene_medida_mm = any(m in comp_name for m in todas_medidas_mm)
+                        tiene_medida_in = any(m in comp_name for m in todas_medidas_in)
+                        
+                        # Si el componente es de OTRA medida distinta a la que buscamos, lo ignoramos.
+                        # Si no tiene ninguna medida escrita (ej. Casting, MOD), pasa intacto.
+                        if tiene_medida_mm and medida_mm not in comp_name:
+                            continue
+                        if tiene_medida_in and medida_in not in comp_name:
+                            continue
                     
                     comp_id = line['product_id'][0]
                     comp_data = models.execute_kw(db, uid, api_key, 'product.product', 'read', [comp_id], {'fields': [CAMPO_COSTO, 'standard_price']})[0]
@@ -258,7 +266,7 @@ if btn_buscar and codigo_busqueda:
             margen_pct = (margen_usd / total_costo * 100) if total_costo > 0 else 0.0
 
             if precio_bs == 0.0 and not usar_precio_manual:
-                st.warning("⚠️ Este producto no tiene precio asignado en la lista seleccionada. Puedes usar la opción 'Ingresar precio manualmente' en el menú izquierdo.")
+                st.markdown('<div class="no-print" style="padding: 15px; background-color: #fff3cd; color: #856404; border-left: 6px solid #ffeeba; border-radius: 4px; margin-bottom: 20px;">⚠️ <strong>Atención:</strong> Este producto no tiene precio asignado en la lista seleccionada. Usa la opción "Ingresar precio manualmente" en el menú de la izquierda.</div>', unsafe_allow_html=True)
 
             components.html(
                 """
