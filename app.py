@@ -141,12 +141,6 @@ if btn_buscar and codigo_busqueda:
                                               {'fields': ['name', 'default_code', 'uom_id', 'product_tmpl_id']})[0]
                 
                 codigo_mostrar = prod_data.get('default_code', '')
-                
-                # ==== EXTRACCIÓN PURA Y DIRECTA ====
-                uom_data = prod_data.get('uom_id')
-                uom_name = uom_data[1] if isinstance(uom_data, list) and len(uom_data) > 1 else ""
-                # ===================================
-                
                 tmpl_id = prod_data.get('product_tmpl_id', [0])[0]
                 target_description = prod_data.get('name', '').upper()
 
@@ -180,6 +174,9 @@ if btn_buscar and codigo_busqueda:
                 keywords_to_filter = ["MECANIZADO", "ANILLO", "CAMISA", "CASTING", "SEMIKIT"]
 
                 comp_list, mod_list, moi_list, caf_list = [], [], [], []
+                
+                # VARIABLE PARA GUARDAR LA MEDIDA DE LA CAJA (LA EXTRAEREMOS DE LA BOM)
+                caja_medida_extraida = None
 
                 bom_ids = models.execute_kw(DB, uid, API_KEY, 'mrp.bom', 'search', [[['product_tmpl_id', '=', tmpl_id]]])
                 
@@ -192,6 +189,13 @@ if btn_buscar and codigo_busqueda:
                         comp_name = line['product_id'][1].upper()
                         qty = line['product_qty']
                         
+                        # NUEVA LÓGICA: Si es una CAJA, extraemos su número de cilindros para corregir el UOM
+                        if "CAJA" in comp_name and "CIL" in comp_name:
+                            match = re.search(r'(\d+)\s*CIL', comp_name)
+                            if match:
+                                caja_medida_extraida = match.group(1)
+                        
+                        # FILTRO SELECTIVO DE MEDIDAS (Solo afecta a Mecanizado, Anillos, etc)
                         is_measure_sensitive = any(kw in comp_name for kw in keywords_to_filter)
                         
                         if is_measure_sensitive and target_measures:
@@ -231,6 +235,19 @@ if btn_buscar and codigo_busqueda:
                             caf_list.append(item_data)
                         else:
                             comp_list.append(item_data)
+
+                # =========================================================================
+                # DECISIÓN FINAL DEL NOMBRE DE UNIDAD / MEDIDA
+                # Si logramos extraer la caja de los componentes, lo usamos. 
+                # De lo contrario, tomamos el valor nativo crudo de Odoo como respaldo.
+                if caja_medida_extraida:
+                    uom_name = f"Caja {caja_medida_extraida}"
+                else:
+                    uom_raw = prod_data.get('uom_id', [0, ''])[1]
+                    if "Pieza X" in uom_raw:
+                        uom_raw = uom_raw.replace("Pieza X", "Caja")
+                    uom_name = uom_raw
+                # =========================================================================
 
                 comp_list.sort(key=sort_key)
                 mod_list.sort(key=sort_key)
