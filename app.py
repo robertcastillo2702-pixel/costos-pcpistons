@@ -7,7 +7,7 @@ import re
 URL = "https://pcpistons.odoo.com"
 DB = "antrafs-manufacturas-main-18053459"
 USERNAME = "echacin@pcpistons.com"
-API_KEY = "TU_CLAVE_API_AQUI" # <--- PEGA TU CLAVE DENTRO DE ESTAS COMILLAS
+API_KEY = "9e19c999d117f347b274b0d6fa42c2d323d2e213" # <--- PEGA TU CLAVE DENTRO DE ESTAS COMILLAS
 # ==============================================================
 
 st.set_page_config(page_title="Estructura de Costos - PC Pistons", layout="centered")
