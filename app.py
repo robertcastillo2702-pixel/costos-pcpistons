@@ -7,7 +7,7 @@ import re
 URL = "https://pcpistons.odoo.com"
 DB = "antrafs-manufacturas-main-18053459"
 USERNAME = "echacin@pcpistons.com"
-API_KEY = "9e19c999d117f347b274b0d6fa42c2d323d2e213" # <--- PEGA TU CLAVE DENTRO DE ESTAS COMILLAS
+API_KEY = "TU_CLAVE_API_AQUI" # <--- PEGA TU CLAVE DENTRO DE ESTAS COMILLAS
 # ==============================================================
 
 st.set_page_config(page_title="Estructura de Costos - PC Pistons", layout="centered")
@@ -43,7 +43,8 @@ st.markdown('''
             box-shadow: none !important; 
         }
         
-        .signatures { margin-top: 80px !important; page-break-inside: avoid; }
+        /* Firmas bajadas para evitar estorbar los margenes */
+        .signatures { margin-top: 130px !important; page-break-inside: avoid; }
         .doc-subtitle { margin-bottom: 10px !important; }
         
         table { page-break-inside: auto; margin-top: 10px !important; }
@@ -64,7 +65,9 @@ st.markdown('''
     
     .subtotal-row { font-weight: bold; border-top: 1px solid #000; border-bottom: 1px solid #000 !important; }
     .section-title { font-weight: bold; padding-top: 15px !important; border-bottom: none !important; }
-    .signatures { display: flex; justify-content: space-between; margin-top: 100px; padding: 0 40px; }
+    
+    /* Firmas bajadas en la vista web */
+    .signatures { display: flex; justify-content: space-between; margin-top: 130px; padding: 0 40px; }
     .signature-line { width: 40%; text-align: center; border-top: 1px solid #000; padding-top: 6px; font-size: 14px; }
     </style>
 ''', unsafe_allow_html=True)
@@ -124,13 +127,14 @@ def sort_key(item):
 
 if btn_buscar and codigo_busqueda:
     if API_KEY == "TU_CLAVE_API_AQUI":
-        st.error("⚠️ Faltan las credenciales. Por favor, edita el archivo app.py e ingresa tu Clave API.")
+        st.error("⚠️ Faltan las credenciales. Por favor, edita el archivo app.py e ingresa tu Clave API en la línea 10.")
     else:
         try:
             common = xmlrpc.client.ServerProxy(f'{URL}/xmlrpc/2/common')
             uid = common.authenticate(DB, USERNAME, API_KEY, {})
             models = xmlrpc.client.ServerProxy(f'{URL}/xmlrpc/2/object')
 
+            # Búsqueda exacta
             prod_ids = models.execute_kw(DB, uid, API_KEY, 'product.product', 'search', [[['default_code', '=', codigo_busqueda]]])
             
             if not prod_ids:
@@ -140,26 +144,42 @@ if btn_buscar and codigo_busqueda:
                                               {'fields': ['name', 'default_code', 'uom_id', 'product_tmpl_id']})[0]
                 
                 codigo_mostrar = prod_data.get('default_code', '')
-                uom_name = prod_data.get('uom_id', [0, ''])[1] # Toma la unidad textualmente de Odoo
+                
+                # Extracción literal de la unidad de medida, sin alteraciones
+                uom_raw = prod_data.get('uom_id', [0, ''])[1]
+                uom_name = f"por {uom_raw}" if uom_raw else ""
                 
                 tmpl_id = prod_data.get('product_tmpl_id', [0])[0]
                 target_description = prod_data.get('name', '').upper()
 
-                # AISLAMIENTO DE MEDIDAS POR GUION
-                target_measures = []
-                cb = codigo_busqueda.upper()
-                if "-0.25" in cb or "-010" in cb: target_measures.extend(["0.25", "010"])
-                if "-0.50" in cb or "-020" in cb: target_measures.extend(["0.50", "020"])
-                if "-0.75" in cb or "-030" in cb: target_measures.extend(["0.75", "030"])
-                if "-1.00" in cb or "-040" in cb: target_measures.extend(["1.00", "040"])
-                if "-0.20" in cb: target_measures.extend(["0.20", "020"])
-                if "-0.30" in cb: target_measures.extend(["0.30", "030"])
-                if "-0.40" in cb: target_measures.extend(["0.40", "040"])
-                if "-0.60" in cb: target_measures.extend(["0.60", "060"])
-                if "-0.80" in cb: target_measures.extend(["0.80", "080"])
-                if "-STD" in cb: target_measures.append("STD")
-
                 ALL_MARKERS = ['0.25', '0.50', '0.75', '1.00', '010', '020', '030', '040', '060', '080', '0.20', '0.30', '0.40', '0.60', '0.80', 'STD']
+                target_measures = []
+                
+                cb = codigo_busqueda.upper()
+                for m in ALL_MARKERS:
+                    if f"-{m}" in cb:
+                        target_measures.append(m)
+                        if m == '0.25': target_measures.append('010')
+                        if m == '010': target_measures.append('0.25')
+                        if m == '0.50': target_measures.append('020')
+                        if m == '020': target_measures.append('0.50')
+                        if m == '0.75': target_measures.append('030')
+                        if m == '030': target_measures.append('0.75')
+                        if m == '1.00': target_measures.append('040')
+                        if m == '040': target_measures.append('1.00')
+                        if m == '0.20': target_measures.append('020')
+                        if m == '020': target_measures.append('0.20')
+                        if m == '0.30': target_measures.append('030')
+                        if m == '030': target_measures.append('0.30')
+                        if m == '0.40': target_measures.append('040')
+                        if m == '040': target_measures.append('0.40')
+                        if m == '0.60': target_measures.append('060')
+                        if m == '060': target_measures.append('0.60')
+                        if m == '0.80': target_measures.append('080')
+                        if m == '080': target_measures.append('0.80')
+                        
+                target_measures = list(set(target_measures))
+                keywords_to_filter = ["MECANIZADO", "ANILLO", "CAMISA", "CASTING", "SEMIKIT"]
 
                 comp_list, mod_list, moi_list, caf_list = [], [], [], []
 
@@ -174,7 +194,10 @@ if btn_buscar and codigo_busqueda:
                         comp_name = line['product_id'][1].upper()
                         qty = line['product_qty']
                         
-                        if target_measures:
+                        # FILTRO SELECTIVO: Solo se activa si el nombre contiene las palabras clave
+                        is_measure_sensitive = any(kw in comp_name for kw in keywords_to_filter)
+                        
+                        if is_measure_sensitive and target_measures:
                             tiene_alguna_medida = False
                             for m in ALL_MARKERS:
                                 if re.search(r'(?:^|[^a-zA-Z0-9])' + re.escape(m) + r'(?:[^a-zA-Z0-9]|$)', comp_name):
