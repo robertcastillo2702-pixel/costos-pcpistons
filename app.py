@@ -1,6 +1,7 @@
 import xmlrpc.client
 import streamlit as st
 import streamlit.components.v1 as components
+import re  # <-- LIBRERÍA NUEVA PARA LEER SOBREMEDIDAS EXACTAS SIN CONFUNDIRSE CON CÓDIGOS
 
 # ================= CONFIGURACIÓN FIJA DE ODOO =================
 URL = "https://pcpistons.odoo.com"
@@ -130,23 +131,21 @@ if btn_buscar and codigo_busqueda:
             uid = common.authenticate(DB, USERNAME, API_KEY, {})
             models = xmlrpc.client.ServerProxy(f'{URL}/xmlrpc/2/object')
 
-            prod_ids = models.execute_kw(DB, uid, API_KEY, 'product.product', 'search', [[['default_code', 'ilike', codigo_busqueda]]])
+            # CAMBIO A BÚSQUEDA EXACTA (=) PARA EVITAR QUE ODOO MEZCLE PRODUCTOS SIMILARES
+            prod_ids = models.execute_kw(DB, uid, API_KEY, 'product.product', 'search', [[['default_code', '=', codigo_busqueda]]])
             
             if not prod_ids:
-                st.error("No se encontró ningún producto con ese código.")
+                st.error("No se encontró ningún producto EXACTO con ese código. Verifica que esté escrito igual que en Odoo.")
             else:
                 prod_data = models.execute_kw(DB, uid, API_KEY, 'product.product', 'read', [prod_ids[0]], 
                                               {'fields': ['name', 'default_code', 'uom_id', 'product_tmpl_id']})[0]
                 
                 codigo_mostrar = prod_data.get('default_code', '')
                 
-                # ==== CORRECCIÓN DE LA UNIDAD DE MEDIDA ====
                 uom_raw = prod_data.get('uom_id', [0, ''])[1]
                 if "Pieza X" in uom_raw:
                     uom_raw = uom_raw.replace("Pieza X", "Caja de")
-                
                 uom_name = f"por {uom_raw}" if uom_raw else ""
-                # ===========================================
                 
                 tmpl_id = prod_data.get('product_tmpl_id', [0])[0]
                 target_description = prod_data.get('name', '').upper()
@@ -192,9 +191,20 @@ if btn_buscar and codigo_busqueda:
                         qty = line['product_qty']
                         
                         if target_markers:
-                            tiene_alguna_medida = any(m in comp_name for m in ALL_MARKERS)
+                            tiene_alguna_medida = False
+                            for m in ALL_MARKERS:
+                                # EXPRESIÓN REGULAR: Busca que la medida sea una palabra/número aislado
+                                if re.search(r'(?:^|[^a-zA-Z0-9])' + re.escape(m) + r'(?:[^a-zA-Z0-9]|$)', comp_name):
+                                    tiene_alguna_medida = True
+                                    break
+                            
                             if tiene_alguna_medida:
-                                es_mi_medida = any(m in comp_name for m in target_markers)
+                                es_mi_medida = False
+                                for m in target_markers:
+                                    if re.search(r'(?:^|[^a-zA-Z0-9])' + re.escape(m) + r'(?:[^a-zA-Z0-9]|$)', comp_name):
+                                        es_mi_medida = True
+                                        break
+                                
                                 if not es_mi_medida:
                                     continue
                         
