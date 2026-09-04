@@ -1,7 +1,7 @@
 import xmlrpc.client
 import streamlit as st
 import streamlit.components.v1 as components
-import re  # <-- LIBRERÍA NUEVA PARA LEER SOBREMEDIDAS EXACTAS SIN CONFUNDIRSE CON CÓDIGOS
+import re
 
 # ================= CONFIGURACIÓN FIJA DE ODOO =================
 URL = "https://pcpistons.odoo.com"
@@ -131,7 +131,6 @@ if btn_buscar and codigo_busqueda:
             uid = common.authenticate(DB, USERNAME, API_KEY, {})
             models = xmlrpc.client.ServerProxy(f'{URL}/xmlrpc/2/object')
 
-            # CAMBIO A BÚSQUEDA EXACTA (=) PARA EVITAR QUE ODOO MEZCLE PRODUCTOS SIMILARES
             prod_ids = models.execute_kw(DB, uid, API_KEY, 'product.product', 'search', [[['default_code', '=', codigo_busqueda]]])
             
             if not prod_ids:
@@ -141,41 +140,26 @@ if btn_buscar and codigo_busqueda:
                                               {'fields': ['name', 'default_code', 'uom_id', 'product_tmpl_id']})[0]
                 
                 codigo_mostrar = prod_data.get('default_code', '')
-                
-                uom_raw = prod_data.get('uom_id', [0, ''])[1]
-                if "Pieza X" in uom_raw:
-                    uom_raw = uom_raw.replace("Pieza X", "Caja de")
-                uom_name = f"por {uom_raw}" if uom_raw else ""
+                uom_name = prod_data.get('uom_id', [0, ''])[1] # Toma la unidad textualmente de Odoo
                 
                 tmpl_id = prod_data.get('product_tmpl_id', [0])[0]
                 target_description = prod_data.get('name', '').upper()
 
+                # AISLAMIENTO DE MEDIDAS POR GUION
+                target_measures = []
+                cb = codigo_busqueda.upper()
+                if "-0.25" in cb or "-010" in cb: target_measures.extend(["0.25", "010"])
+                if "-0.50" in cb or "-020" in cb: target_measures.extend(["0.50", "020"])
+                if "-0.75" in cb or "-030" in cb: target_measures.extend(["0.75", "030"])
+                if "-1.00" in cb or "-040" in cb: target_measures.extend(["1.00", "040"])
+                if "-0.20" in cb: target_measures.extend(["0.20", "020"])
+                if "-0.30" in cb: target_measures.extend(["0.30", "030"])
+                if "-0.40" in cb: target_measures.extend(["0.40", "040"])
+                if "-0.60" in cb: target_measures.extend(["0.60", "060"])
+                if "-0.80" in cb: target_measures.extend(["0.80", "080"])
+                if "-STD" in cb: target_measures.append("STD")
+
                 ALL_MARKERS = ['0.25', '0.50', '0.75', '1.00', '010', '020', '030', '040', '060', '080', '0.20', '0.30', '0.40', '0.60', '0.80', 'STD']
-                target_markers = []
-                
-                for m in ALL_MARKERS:
-                    if m in codigo_busqueda:
-                        target_markers.append(m)
-                        if m == '0.25': target_markers.append('010')
-                        if m == '010': target_markers.append('0.25')
-                        if m == '0.50': target_markers.append('020')
-                        if m == '020': target_markers.append('0.50')
-                        if m == '0.75': target_markers.append('030')
-                        if m == '030': target_markers.append('0.75')
-                        if m == '1.00': target_markers.append('040')
-                        if m == '040': target_markers.append('1.00')
-                        if m == '0.20': target_markers.append('020')
-                        if m == '020': target_markers.append('0.20')
-                        if m == '0.30': target_markers.append('030')
-                        if m == '030': target_markers.append('0.30')
-                        if m == '0.40': target_markers.append('040')
-                        if m == '040': target_markers.append('0.40')
-                        if m == '0.60': target_markers.append('060')
-                        if m == '060': target_markers.append('0.60')
-                        if m == '0.80': target_markers.append('080')
-                        if m == '080': target_markers.append('0.80')
-                        
-                target_markers = list(set(target_markers))
 
                 comp_list, mod_list, moi_list, caf_list = [], [], [], []
 
@@ -190,17 +174,16 @@ if btn_buscar and codigo_busqueda:
                         comp_name = line['product_id'][1].upper()
                         qty = line['product_qty']
                         
-                        if target_markers:
+                        if target_measures:
                             tiene_alguna_medida = False
                             for m in ALL_MARKERS:
-                                # EXPRESIÓN REGULAR: Busca que la medida sea una palabra/número aislado
                                 if re.search(r'(?:^|[^a-zA-Z0-9])' + re.escape(m) + r'(?:[^a-zA-Z0-9]|$)', comp_name):
                                     tiene_alguna_medida = True
                                     break
                             
                             if tiene_alguna_medida:
                                 es_mi_medida = False
-                                for m in target_markers:
+                                for m in target_measures:
                                     if re.search(r'(?:^|[^a-zA-Z0-9])' + re.escape(m) + r'(?:[^a-zA-Z0-9]|$)', comp_name):
                                         es_mi_medida = True
                                         break
