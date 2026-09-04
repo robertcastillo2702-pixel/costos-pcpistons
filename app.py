@@ -43,8 +43,7 @@ st.markdown('''
             box-shadow: none !important; 
         }
         
-        /* Firmas bajadas para evitar estorbar los margenes */
-        .signatures { margin-top: 130px !important; page-break-inside: avoid; }
+        .signatures { margin-top: 80px !important; page-break-inside: avoid; }
         .doc-subtitle { margin-bottom: 10px !important; }
         
         table { page-break-inside: auto; margin-top: 10px !important; }
@@ -66,7 +65,6 @@ st.markdown('''
     .subtotal-row { font-weight: bold; border-top: 1px solid #000; border-bottom: 1px solid #000 !important; }
     .section-title { font-weight: bold; padding-top: 15px !important; border-bottom: none !important; }
     
-    /* Firmas bajadas en la vista web */
     .signatures { display: flex; justify-content: space-between; margin-top: 130px; padding: 0 40px; }
     .signature-line { width: 40%; text-align: center; border-top: 1px solid #000; padding-top: 6px; font-size: 14px; }
     </style>
@@ -134,7 +132,6 @@ if btn_buscar and codigo_busqueda:
             uid = common.authenticate(DB, USERNAME, API_KEY, {})
             models = xmlrpc.client.ServerProxy(f'{URL}/xmlrpc/2/object')
 
-            # Búsqueda exacta
             prod_ids = models.execute_kw(DB, uid, API_KEY, 'product.product', 'search', [[['default_code', '=', codigo_busqueda]]])
             
             if not prod_ids:
@@ -145,9 +142,10 @@ if btn_buscar and codigo_busqueda:
                 
                 codigo_mostrar = prod_data.get('default_code', '')
                 
-                # Extracción literal de la unidad de medida, sin alteraciones
-                uom_raw = prod_data.get('uom_id', [0, ''])[1]
-                uom_name = f"por {uom_raw}" if uom_raw else ""
+                # ==== EXTRACCIÓN PURA Y DIRECTA ====
+                uom_data = prod_data.get('uom_id')
+                uom_name = uom_data[1] if isinstance(uom_data, list) and len(uom_data) > 1 else ""
+                # ===================================
                 
                 tmpl_id = prod_data.get('product_tmpl_id', [0])[0]
                 target_description = prod_data.get('name', '').upper()
@@ -194,7 +192,6 @@ if btn_buscar and codigo_busqueda:
                         comp_name = line['product_id'][1].upper()
                         qty = line['product_qty']
                         
-                        # FILTRO SELECTIVO: Solo se activa si el nombre contiene las palabras clave
                         is_measure_sensitive = any(kw in comp_name for kw in keywords_to_filter)
                         
                         if is_measure_sensitive and target_measures:
